@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "seat.fullname" . }}-worker
+  labels:
+    {{- include "seat.labels" . | nindent 4 }}
+    subtype: worker
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.app.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "seat.selectorLabels" . | nindent 6 }}
+      subtype: worker
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "seat.selectorLabels" . | nindent 8 }}
+        subtype: worker
+
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "seat.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["worker"]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+          - name: REDIS_HOST
+            value: {{ include "seat.fullname" . }}-redis-master
+          - name: APP_DEBUG
+            value: "{{ .Values.seat.debug }}"
+          - name: APP_URL
+            value: https://{{ .Values.seat.host }}/
+          - name: EVE_CLIENT_ID
+            value: {{ required "An EVE Application Client ID is required, go register one at https://developers.eveonline.com/" .Values.seat.eveClientId }} 
+          - name: EVE_CLIENT_SECRET
+            value: {{ required "An EVE Application Client Secret is required, go register one at https://developers.eveonline.com/"  .Values.seat.eveClientSecret }}
+          - name: EVE_CALLBACK_URL
+            value: https://{{ .Values.seat.host }}/auth/eve/callback
+          - name: APP_KEY
+            value: {{ .Values.seat.appKey }}
+          - name: APP_ENV
+            value: local
+          - name: DB_HOST
+            value: {{ include "seat.fullname" . }}-mariadb
+          - name: DB_DATABASE
+            value: seat
+          - name: DB_USERNAME
+            value: seat
+          - name: DB_PORT
+            value: "3306"
+          - name: DB_PASSWORD
+            value: {{ .Values.mariadb.auth.password }}
+          - name: NGINX_HOST
+            value: _
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+
+

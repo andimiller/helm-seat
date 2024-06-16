@@ -1,0 +1,17 @@
+apiVersion: v2
+name: seat
+description: A Helm chart for EVE SeAT
+
+type: application
+
+version: 0.1.0
+
+appVersion: "5.0.1"
+
+dependencies:
+- name: redis
+  version: 19.5.3 
+  repository: "@bitnami"
+- name: mariadb
+  version: 18.2.2
+  repository: "@bitnami"
